@@ -1,4 +1,5 @@
 import './style.css';
+import { inject } from '@vercel/analytics';
 import { LyriaClient } from './audio/lyria-client';
 import { AudioPlayer } from './audio/audio-player';
 import { LorenzModulator } from './music/lorenz-modulator';
@@ -8,6 +9,9 @@ import { SceneManager } from './viz/scene';
 import { initControls } from './ui/controls';
 import { RoomManager } from './room/room-manager';
 import type { SliderState, AudioAnalysis, MusicGenConfig, LorenzState } from './types';
+
+// Initialize Vercel Web Analytics
+inject();
 
 // ── State ──
 let sliderState: SliderState = { lightNight: 0.2, calmDrive: 0.2 };
