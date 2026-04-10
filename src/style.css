@@ -66,6 +66,99 @@ html, body {
   border-color: rgba(255, 255, 255, 0.25);
 }
 
+/* ── Room UI ── */
+.room-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 1.8rem 0;
+  width: 260px;
+}
+.room-divider::before,
+.room-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.room-divider span {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.room-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.room-btn {
+  padding: 10px 28px;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-dim);
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.room-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text);
+}
+.room-btn.secondary {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+#room-code-input {
+  font-size: 1.8rem;
+  letter-spacing: 0.5em;
+  text-align: center;
+  width: 220px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  outline: none;
+  margin-bottom: 1.5rem;
+}
+#room-code-input:focus {
+  border-color: var(--accent);
+}
+#room-code-input::placeholder {
+  color: rgba(255, 255, 255, 0.12);
+}
+
+.overlay-status {
+  font-size: 0.7rem;
+  color: var(--accent);
+  margin-top: 1rem;
+  letter-spacing: 0.1em;
+  min-height: 1.2em;
+}
+
+.error-text {
+  font-size: 0.7rem;
+  color: #ff6b6b;
+  margin-top: 0.8rem;
+  letter-spacing: 0.05em;
+}
+
+#room-info {
+  color: var(--accent);
+}
+#room-code-display {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.15em;
+}
+
 /* ── App Layout ── */
 #app {
   position: fixed;

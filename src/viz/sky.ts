@@ -30,10 +30,10 @@ export class SkySystem {
     scene.add(this.sky);
 
     const uniforms = this.sky.material.uniforms;
-    uniforms['turbidity'].value = 2.5;
-    uniforms['rayleigh'].value = 1.5;
-    uniforms['mieCoefficient'].value = 0.005;
-    uniforms['mieDirectionalG'].value = 0.75;
+    uniforms['turbidity'].value = 1.8;
+    uniforms['rayleigh'].value = 1.0;
+    uniforms['mieCoefficient'].value = 0.003;
+    uniforms['mieDirectionalG'].value = 0.7;
 
     // ── Stars ──
     const starCount = 1500;
@@ -83,7 +83,7 @@ export class SkySystem {
       opacity: 0,
     });
     this.moonMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(5, 32, 32),
+      new THREE.SphereGeometry(10, 32, 32),
       this.moonMaterial,
     );
     scene.add(this.moonMesh);
@@ -91,12 +91,14 @@ export class SkySystem {
 
   update(lightNight: number, audio: AudioAnalysis): void {
     // ── Sun elevation from lightNight ──
-    // 0.0 → 55° (bright day)
-    // 0.3 → 12° (golden hour)
-    // 0.5 → -2° (just below horizon)
-    // 1.0 → -30° (deep night)
-    const elevation = 55 - lightNight * 85;
-    const azimuth = -135 + lightNight * 90; // sun moves across sky
+    // Camera faces -Z. Sun is behind camera (+Z side) so it lights the
+    // sky without being in the viewport.
+    // 0.0 → 12° (warm low sun — golden-hour feel, not overhead wash)
+    // 0.3 → 5° (deep golden hour)
+    // 0.5 → -5° (just set)
+    // 1.0 → -20° (deep night)
+    const elevation = 12 - lightNight * 32;
+    const azimuth = 30 - lightNight * 40;
 
     const phi = THREE.MathUtils.degToRad(90 - elevation);
     const theta = THREE.MathUtils.degToRad(azimuth);
@@ -105,12 +107,11 @@ export class SkySystem {
 
     // ── Sky tuning based on time of day ──
     const uniforms = this.sky.material.uniforms;
-    // Increase rayleigh during golden hour for richer colors
+    // Low rayleigh keeps the sky from going white
     const goldenFactor = 1 - Math.abs(lightNight - 0.35) * 3;
-    uniforms['rayleigh'].value = 1.5 + Math.max(0, goldenFactor) * 2;
-    uniforms['mieCoefficient'].value = 0.005 + Math.max(0, goldenFactor) * 0.01;
-    // Exposure: brighter during day
-    uniforms['turbidity'].value = 2.5 - lightNight * 1.5;
+    uniforms['rayleigh'].value = 0.6 + Math.max(0, goldenFactor) * 0.8;
+    uniforms['mieCoefficient'].value = 0.003 + Math.max(0, goldenFactor) * 0.004;
+    uniforms['turbidity'].value = 1.2 - lightNight * 0.5;
 
     // ── Sun orb position and visibility ──
     const sunDir = this.sunPosition.clone().normalize();
@@ -120,13 +121,16 @@ export class SkySystem {
     const sunScale = 1 + audio.lowEnergy * 0.15;
     this.sunMesh.scale.setScalar(sunScale);
 
-    // ── Moon position (opposite side) and visibility ──
-    const moonElevation = -55 + lightNight * 85;
+    // ── Moon — in FRONT of camera (-Z side, azimuth ~180°) ──
+    // Rises as night deepens, centered in the viewer's sky
+    const moonElevation = -30 + lightNight * 55; // at night=1: 25° up
+    const moonAzimuth = 190 - lightNight * 15;   // roughly centered in view
     const moonPhi = THREE.MathUtils.degToRad(90 - moonElevation);
-    const moonTheta = THREE.MathUtils.degToRad(azimuth + 180);
+    const moonTheta = THREE.MathUtils.degToRad(moonAzimuth);
     const moonDir = new THREE.Vector3().setFromSphericalCoords(1, moonPhi, moonTheta).normalize();
     this.moonMesh.position.copy(moonDir.multiplyScalar(900));
-    this.moonMaterial.opacity = Math.max(0, lightNight * 2 - 0.8);
+    // Moon fades in starting at lightNight > 0.35
+    this.moonMaterial.opacity = Math.max(0, (lightNight - 0.35) / 0.4);
 
     // ── Stars: fade in during night ──
     // Start appearing at lightNight > 0.45

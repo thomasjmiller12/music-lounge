@@ -19,6 +19,7 @@
   "dependencies": {
     "@google/genai": "^1.49.0",
     "gsap": "^3.14.2",
+    "peerjs": "^1.5.5",
     "postprocessing": "^6.39.0",
     "three": "^0.183.2"
   }

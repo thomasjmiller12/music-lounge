@@ -9,9 +9,30 @@
 <body>
   <!-- Start overlay (AudioContext needs user gesture) -->
   <div id="start-overlay">
-    <h1>MUSIC LOUNGE</h1>
-    <p class="subtitle">AI-generated ambient music that never repeats</p>
-    <button id="start-btn">ENTER LOUNGE</button>
+    <!-- Default view -->
+    <div id="start-default">
+      <h1>MUSIC LOUNGE</h1>
+      <p class="subtitle">AI-generated ambient music that never repeats</p>
+      <button id="start-btn">ENTER LOUNGE</button>
+      <div class="room-divider"><span>listen together</span></div>
+      <div class="room-buttons">
+        <button id="create-room-btn" class="room-btn">CREATE ROOM</button>
+        <button id="join-room-btn" class="room-btn">JOIN ROOM</button>
+      </div>
+      <p id="overlay-status" class="overlay-status"></p>
+    </div>
+
+    <!-- Join room view -->
+    <div id="join-view" class="hidden">
+      <h1>MUSIC LOUNGE</h1>
+      <p class="subtitle">Enter room code</p>
+      <input type="text" id="room-code-input" maxlength="4" placeholder="ABCD" autocomplete="off" spellcheck="false" />
+      <div class="room-buttons">
+        <button id="join-connect-btn" class="room-btn">CONNECT</button>
+        <button id="join-back-btn" class="room-btn secondary">BACK</button>
+      </div>
+      <p id="join-error" class="error-text hidden"></p>
+    </div>
   </div>
 
   <div id="app" class="hidden">
@@ -21,6 +42,7 @@
     <!-- Status bar (top) -->
     <div id="status-bar">
       <span id="status-text">Connecting...</span>
+      <span id="room-info" class="hidden"> · <span id="room-code-display"></span> · <span id="peer-count"></span></span>
     </div>
 
     <!-- Control panel (bottom) -->

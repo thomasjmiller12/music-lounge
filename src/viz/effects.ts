@@ -27,9 +27,9 @@ export function createEffectComposer(
   // Bloom — makes emissive objects glow
   const bloom = new BloomEffect({
     blendFunction: BlendFunction.ADD,
-    intensity: 0.8,
-    luminanceThreshold: 0.6,
-    luminanceSmoothing: 0.3,
+    intensity: 0.4,
+    luminanceThreshold: 0.85,
+    luminanceSmoothing: 0.2,
     mipmapBlur: true,
   });
 

@@ -9,11 +9,13 @@ export class AudioPlayer {
   private workletNode: AudioWorkletNode | null = null;
   private analyser: AnalyserNode | null = null;
   private gainNode: GainNode | null = null;
+  private streamDest: MediaStreamAudioDestinationNode | null = null;
   private fftData: Float32Array<ArrayBuffer> = new Float32Array(0);
   private waveformData: Float32Array<ArrayBuffer> = new Float32Array(0);
 
   /**
-   * Initialize AudioContext and worklet. Must be called from a user gesture.
+   * Initialize for local playback (solo/host mode).
+   * Sets up AudioWorklet for PCM streaming from Lyria.
    */
   async init(): Promise<void> {
     this.ctx = new AudioContext({ sampleRate: 48000 });
@@ -30,13 +32,48 @@ export class AudioPlayer {
     this.analyser.fftSize = 256;
     this.analyser.smoothingTimeConstant = 0.8;
 
-    // Signal chain: worklet → gain → analyser → destination
+    // Stream destination for room sharing (pre-gain, full volume for guests)
+    this.streamDest = this.ctx.createMediaStreamDestination();
+    this.workletNode.connect(this.streamDest);
+
+    // Local playback chain: worklet → gain → analyser → destination
     this.workletNode.connect(this.gainNode);
     this.gainNode.connect(this.analyser);
     this.analyser.connect(this.ctx.destination);
 
     this.fftData = new Float32Array(this.analyser.frequencyBinCount);
     this.waveformData = new Float32Array(this.analyser.fftSize);
+  }
+
+  /**
+   * Initialize for stream playback (guest mode).
+   * Plays a MediaStream received from the room host.
+   */
+  async initFromStream(stream: MediaStream): Promise<void> {
+    this.ctx = new AudioContext({ sampleRate: 48000 });
+
+    const source = this.ctx.createMediaStreamSource(stream);
+
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.gain.value = 1.0;
+
+    this.analyser = this.ctx.createAnalyser();
+    this.analyser.fftSize = 256;
+    this.analyser.smoothingTimeConstant = 0.8;
+
+    source.connect(this.gainNode);
+    this.gainNode.connect(this.analyser);
+    this.analyser.connect(this.ctx.destination);
+
+    this.fftData = new Float32Array(this.analyser.frequencyBinCount);
+    this.waveformData = new Float32Array(this.analyser.fftSize);
+  }
+
+  /**
+   * Get the output MediaStream for room sharing (host only).
+   */
+  getOutputStream(): MediaStream | null {
+    return this.streamDest?.stream ?? null;
   }
 
   /**

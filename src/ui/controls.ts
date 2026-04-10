@@ -14,6 +14,7 @@ export interface ControlCallbacks {
  */
 export function initControls(callbacks: ControlCallbacks): {
   getSliderState: () => SliderState;
+  setSliderState: (state: SliderState) => void;
 } {
   const lightNightEl = document.getElementById('light-night') as HTMLInputElement;
   const calmDriveEl = document.getElementById('calm-drive') as HTMLInputElement;
@@ -84,5 +85,12 @@ export function initControls(callbacks: ControlCallbacks): {
     updateTrackFill(el);
   });
 
-  return { getSliderState };
+  const setSliderState = (state: SliderState): void => {
+    lightNightEl.value = String(Math.round(state.lightNight * 1000));
+    calmDriveEl.value = String(Math.round(state.calmDrive * 1000));
+    updateTrackFill(lightNightEl);
+    updateTrackFill(calmDriveEl);
+  };
+
+  return { getSliderState, setSliderState };
 }
