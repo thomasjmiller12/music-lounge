@@ -1,114 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>Music Lounge</title>
-    <link rel="stylesheet" href="/src/style.css" />
-  </head>
-  <body>
-    <div id="start-overlay">
-      <div class="start-content">
-        <span class="start-kicker">ambient groovebox</span>
-        <h1>MUSIC LOUNGE</h1>
-        <p>Let the room drift. Shape the sound as it evolves.</p>
-        <button id="start-btn">ENTER LOUNGE</button>
-      </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Lounge</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <!-- Start overlay (AudioContext needs user gesture) -->
+  <div id="start-overlay">
+    <h1>MUSIC LOUNGE</h1>
+    <p class="subtitle">AI-generated ambient music that never repeats</p>
+    <button id="start-btn">ENTER LOUNGE</button>
+  </div>
+
+  <div id="app" class="hidden">
+    <!-- Three.js renders to this canvas -->
+    <canvas id="viz-canvas"></canvas>
+
+    <!-- Status bar (top) -->
+    <div id="status-bar">
+      <span id="status-text">Connecting...</span>
     </div>
 
-    <div id="app" class="hidden">
-      <canvas id="viz-canvas" aria-hidden="true"></canvas>
-
-      <div class="surface">
-        <!-- Transport strip -->
-        <div class="transport-strip">
-          <span class="transport-logo">MUSIC LOUNGE</span>
-          <div class="transport-info">
-            <span id="chord-display">Cmaj9</span>
-            <span class="dot"></span>
-            <span id="bpm-display">76 BPM</span>
-            <span class="dot"></span>
-            <span id="phrase-display">Phrase 1</span>
-          </div>
-          <span id="mutation-indicator" class="mutation-tag">Settling in</span>
+    <!-- Control panel (bottom) -->
+    <div id="controls">
+      <div class="slider-group">
+        <div class="slider-row">
+          <label class="slider-label-left">DAY</label>
+          <input type="range" id="light-night" min="0" max="1000" value="200" />
+          <label class="slider-label-right">NIGHT</label>
         </div>
-
-        <!-- Room label -->
-        <div class="room-state">
-          <h2 id="macro-summary">sunlit drift</h2>
-          <p id="macro-description">soft edges, 76 BPM</p>
+        <div class="slider-row">
+          <label class="slider-label-left">CALM</label>
+          <input type="range" id="calm-drive" min="0" max="1000" value="200" />
+          <label class="slider-label-right">DRIVE</label>
         </div>
+      </div>
 
-        <!-- Macro sliders - the hero controls -->
-        <div class="macro-section">
-          <div class="macro-control" id="macro-lightNight">
-            <div class="macro-header">
-              <span class="macro-label">LIGHT</span>
-              <span class="macro-value" id="lightNight-value">Sunlit</span>
-              <span class="macro-label">NIGHT</span>
-            </div>
-            <div class="macro-track">
-              <div class="macro-gradient macro-gradient-ln"></div>
-              <input type="range" class="macro-input" min="0" max="1000" value="280" />
-            </div>
-          </div>
+      <!-- Transport -->
+      <div class="transport">
+        <button id="play-btn" class="transport-btn active">PLAY</button>
+        <button id="pause-btn" class="transport-btn">PAUSE</button>
+      </div>
 
-          <div class="macro-control" id="macro-calmDrive">
-            <div class="macro-header">
-              <span class="macro-label">CALM</span>
-              <span class="macro-value" id="calmDrive-value">Drift</span>
-              <span class="macro-label">DRIVE</span>
-            </div>
-            <div class="macro-track">
-              <div class="macro-gradient macro-gradient-cd"></div>
-              <input type="range" class="macro-input" min="0" max="1000" value="360" />
-            </div>
-          </div>
+      <!-- Advanced toggle -->
+      <button id="advanced-toggle" class="advanced-btn">ADVANCED</button>
+
+      <!-- Advanced panel (hidden by default) -->
+      <div id="advanced-panel" class="hidden">
+        <div class="advanced-row">
+          <label>BPM</label>
+          <select id="bpm-select">
+            <option value="" selected>Auto</option>
+            <option value="70">70</option>
+            <option value="80">80</option>
+            <option value="90">90</option>
+            <option value="100">100</option>
+            <option value="110">110</option>
+            <option value="120">120</option>
+            <option value="130">130</option>
+            <option value="140">140</option>
+          </select>
+          <span class="hint">Changes BPM (requires brief audio reset)</span>
         </div>
-
-        <!-- Layer mute pads + extra sliders -->
-        <div class="controls-row">
-          <div class="layer-pads">
-            <button class="layer-pad on" data-layer="drums">
-              <div class="layer-level-bar"></div>
-              <span class="layer-pad-label">DRM</span>
-            </button>
-            <button class="layer-pad on" data-layer="bass">
-              <div class="layer-level-bar"></div>
-              <span class="layer-pad-label">BAS</span>
-            </button>
-            <button class="layer-pad on" data-layer="pad">
-              <div class="layer-level-bar"></div>
-              <span class="layer-pad-label">PAD</span>
-            </button>
-            <button class="layer-pad on" data-layer="arp">
-              <div class="layer-level-bar"></div>
-              <span class="layer-pad-label">ARP</span>
-            </button>
-            <button class="layer-pad on" data-layer="atmo">
-              <div class="layer-level-bar"></div>
-              <span class="layer-pad-label">ATM</span>
-            </button>
-          </div>
-
-          <div class="mini-sliders">
-            <div class="mini-slider">
-              <label>TONE</label>
-              <input type="range" id="slider-tone" min="0" max="1000" value="580" />
-            </div>
-            <div class="mini-slider">
-              <label>SPACE</label>
-              <input type="range" id="slider-space" min="0" max="1000" value="520" />
-            </div>
-            <div class="mini-slider">
-              <label>TEXTURE</label>
-              <input type="range" id="slider-texture" min="0" max="1000" value="480" />
-            </div>
-          </div>
+        <div class="advanced-row">
+          <label>Volume</label>
+          <input type="range" id="volume" min="0" max="100" value="80" />
+        </div>
+        <div class="advanced-row">
+          <label>Lorenz Speed</label>
+          <input type="range" id="lorenz-speed" min="1" max="100" value="10" />
+          <span class="hint">How fast the music evolves</span>
         </div>
       </div>
     </div>
+  </div>
 
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+  <script type="module" src="/src/main.ts"></script>
+</body>
 </html>

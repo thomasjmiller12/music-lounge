@@ -1,242 +1,155 @@
-import {
-  AudioEngine,
-  type FrontControlName,
-  type LayerName,
-  type MacroAxisName,
-} from './audio/engine';
-import { Visualizer } from './ui/Visualizer';
+import './style.css';
+import { LyriaClient } from './audio/lyria-client';
+import { AudioPlayer } from './audio/audio-player';
+import { LorenzModulator } from './music/lorenz-modulator';
+import { ParamEngine } from './music/param-engine';
+import { SOUND_PALETTE, randomizeSession } from './music/sound-palette';
+import { SceneManager } from './viz/scene';
+import { initControls } from './ui/controls';
+import type { SliderState, AudioAnalysis, MusicGenConfig } from './types';
 
-const engine = new AudioEngine();
-let visualizer: Visualizer | null = null;
-let mutationFlashTimer = 0;
+// ── State ──
+let sliderState: SliderState = { lightNight: 0.2, calmDrive: 0.2 };
+let playing = false;
+let bpm: number | null = null;
 
-const startOverlay = document.getElementById('start-overlay')!;
-const app = document.getElementById('app')!;
-const surface = document.querySelector<HTMLElement>('.surface')!;
-const bpmDisplay = document.getElementById('bpm-display')!;
-const chordDisplay = document.getElementById('chord-display')!;
-const phraseDisplay = document.getElementById('phrase-display')!;
-const mutationIndicator = document.getElementById('mutation-indicator')!;
-const macroSummary = document.getElementById('macro-summary')!;
-const macroDescription = document.getElementById('macro-description')!;
+// ── Modules (session-randomized palette) ──
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const lyria = new LyriaClient(apiKey);
+const audioPlayer = new AudioPlayer();
+const lorenz = new LorenzModulator(0.0005, 2000);
+const palette = randomizeSession(SOUND_PALETTE);
+const paramEngine = new ParamEngine(palette);
+let scene: SceneManager | null = null;
 
-const lightNightInput = document.querySelector<HTMLInputElement>('#macro-lightNight .macro-input')!;
-const calmDriveInput = document.querySelector<HTMLInputElement>('#macro-calmDrive .macro-input')!;
-const lightNightValue = document.getElementById('lightNight-value')!;
-const calmDriveValue = document.getElementById('calmDrive-value')!;
-
-const toneSlider = document.getElementById('slider-tone') as HTMLInputElement;
-const spaceSlider = document.getElementById('slider-space') as HTMLInputElement;
-const textureSlider = document.getElementById('slider-texture') as HTMLInputElement;
-
-const layerPads = document.querySelectorAll<HTMLButtonElement>('.layer-pad');
-
-const LAYER_KEYS: Record<string, LayerName> = {
-  q: 'drums', w: 'bass', e: 'pad', r: 'arp', t: 'atmo',
-};
-
-(window as typeof window & { __musicLounge?: { engine: AudioEngine } }).__musicLounge = { engine };
-
-function descriptor(value: number, words: string[]) {
-  const index = Math.min(words.length - 1, Math.floor(value * words.length));
-  return words[index];
+// ── Status ──
+function setStatus(text: string): void {
+  const el = document.getElementById('status-text');
+  if (el) el.textContent = text;
 }
 
-function formatMacro(axis: MacroAxisName, value: number) {
-  if (axis === 'lightNight') return descriptor(value, ['Sunlit', 'Golden', 'Dusk', 'Night']);
-  return descriptor(value, ['Drift', 'Steady', 'Lifted', 'Drive']);
-}
-
-function getRoomSummary() {
-  const state = engine.getEngineState();
-  const light = descriptor(state.macros.lightNight, ['sunlit', 'golden', 'dusk', 'night']);
-  const drive = descriptor(state.macros.calmDrive, ['drift', 'steady', 'lift', 'drive']);
-  return {
-    title: `${light} ${drive}`,
-    description: `${Math.round(state.bpm)} BPM · ${state.currentChord.name}`,
-  };
-}
-
-function mix(a: number, b: number, t: number) {
-  return a + (b - a) * t;
-}
-
-function updateSurfaceTheme() {
-  const state = engine.getEngineState();
-  const ln = state.macros.lightNight;
-  const cd = state.macros.calmDrive;
-  const root = document.documentElement;
-
-  // Surface background shifts warm→cool
-  const bgR = Math.round(mix(245, 22, ln));
-  const bgG = Math.round(mix(240, 24, ln));
-  const bgB = Math.round(mix(232, 32, ln));
-  surface.style.background = `rgba(${bgR}, ${bgG}, ${bgB}, 0.94)`;
-
-  // Text color
-  const textL = ln > 0.5 ? mix(200, 232, (ln - 0.5) * 2) : mix(26, 120, ln * 2);
-  surface.style.color = ln > 0.5
-    ? `rgb(${Math.round(textL)}, ${Math.round(textL - 4)}, ${Math.round(textL - 8)})`
-    : `rgb(${Math.round(textL)}, ${Math.round(textL)}, ${Math.round(textL)})`;
-
-  // Border color
-  const borderA = ln > 0.5 ? 0.08 : 0.1;
-  const borderC = ln > 0.5 ? 255 : 0;
-  root.style.setProperty('--border-live', `rgba(${borderC}, ${borderC}, ${borderC}, ${borderA})`);
-
-  // Orange accent shifts warmer(day) → cooler(night)
-  const accentR = Math.round(mix(255, 100, ln));
-  const accentG = Math.round(mix(107, 160, ln));
-  const accentB = Math.round(mix(43, 240, ln));
-  root.style.setProperty('--orange', `rgb(${accentR}, ${accentG}, ${accentB})`);
-  root.style.setProperty('--orange-soft', `rgba(${accentR}, ${accentG}, ${accentB}, 0.15)`);
-
-  // Slider gradient shifts with drive
-  const driveHeat = mix(0.3, 1, cd);
-  root.style.setProperty('--drive-heat', `${driveHeat}`);
-}
-
-function syncHud() {
-  const state = engine.getEngineState();
-  const summary = getRoomSummary();
-
-  bpmDisplay.textContent = `${state.bpm} BPM`;
-  chordDisplay.textContent = state.currentChord.name;
-  phraseDisplay.textContent = `Phrase ${state.evolution.phraseIndex + 1}`;
-  macroSummary.textContent = summary.title;
-  macroDescription.textContent = summary.description;
-
-  const queued = state.evolution.pendingDimensions[0];
-  mutationIndicator.textContent = queued
-    ? `${state.evolution.mutationLabel}`
-    : state.evolution.mutationLabel;
-
-  lightNightValue.textContent = formatMacro('lightNight', state.macros.lightNight);
-  calmDriveValue.textContent = formatMacro('calmDrive', state.macros.calmDrive);
-
-  layerPads.forEach((pad) => {
-    const layer = pad.dataset.layer as LayerName;
-    pad.classList.toggle('on', state.layers[layer].enabled);
-    const bar = pad.querySelector<HTMLElement>('.layer-level-bar');
-    if (bar) bar.style.height = `${Math.round(state.layers[layer].level * 100)}%`;
-  });
-
-  updateSurfaceTheme();
-}
-
-function syncSliders() {
-  const state = engine.getEngineState();
-  lightNightInput.value = String(Math.round(state.macros.lightNight * 1000));
-  calmDriveInput.value = String(Math.round(state.macros.calmDrive * 1000));
-  toneSlider.value = String(Math.round(state.frontPanel.tone * 1000));
-  spaceSlider.value = String(Math.round(state.frontPanel.space * 1000));
-  textureSlider.value = String(Math.round(state.frontPanel.texture * 1000));
-}
-
-function flashMutation() {
-  mutationIndicator.classList.add('active');
-  window.clearTimeout(mutationFlashTimer);
-  mutationFlashTimer = window.setTimeout(() => mutationIndicator.classList.remove('active'), 1800);
-}
-
-function bindMacros() {
-  lightNightInput.addEventListener('input', () => {
-    engine.setMacroAxis('lightNight', Number(lightNightInput.value) / 1000);
-    syncHud();
-  });
-  calmDriveInput.addEventListener('input', () => {
-    engine.setMacroAxis('calmDrive', Number(calmDriveInput.value) / 1000);
-    syncHud();
-  });
-}
-
-function bindSliders() {
-  toneSlider.addEventListener('input', () => {
-    engine.setFrontControl('tone', Number(toneSlider.value) / 1000);
-    syncHud();
-  });
-  spaceSlider.addEventListener('input', () => {
-    engine.setFrontControl('space', Number(spaceSlider.value) / 1000);
-    syncHud();
-  });
-  textureSlider.addEventListener('input', () => {
-    engine.setFrontControl('texture', Number(textureSlider.value) / 1000);
-    syncHud();
-  });
-}
-
-function bindLayers() {
-  layerPads.forEach((pad) => {
-    pad.addEventListener('click', () => {
-      engine.toggleLayer(pad.dataset.layer as LayerName);
-      syncHud();
-    });
-  });
-}
-
-function bindKeyboard() {
-  window.addEventListener('keydown', (e) => {
-    if (e.repeat) return;
-    const key = e.key.toLowerCase();
-    if (key === ' ') {
-      e.preventDefault();
-      if (!engine.getEngineState().playing) startApp();
-    }
-    if (LAYER_KEYS[key]) {
-      engine.toggleLayer(LAYER_KEYS[key]);
-      syncHud();
-    }
-  });
-}
-
-function bindEngineEvents() {
-  engine.onBeat((beat, layers) => {
-    if (beat === 0) syncHud();
-    if (layers.kick) {
-      surface.classList.remove('beat-pulse');
-      void surface.offsetWidth;
-      surface.classList.add('beat-pulse');
-    }
-  });
-
-  engine.onPhrase(() => {
-    syncHud();
-    syncSliders();
-  });
-
-  engine.onMutation(() => {
-    syncHud();
-    syncSliders();
-    flashMutation();
-  });
-}
-
-async function startApp() {
-  await engine.start();
-  startOverlay.classList.add('hidden');
+// ── Start ──
+async function start(): Promise<void> {
+  const overlay = document.getElementById('start-overlay')!;
+  const app = document.getElementById('app')!;
+  overlay.classList.add('hidden');
   app.classList.remove('hidden');
 
-  if (!visualizer) {
-    visualizer = new Visualizer(document.getElementById('viz-canvas') as HTMLCanvasElement, engine);
-    visualizer.start();
+  setStatus('Initializing audio...');
+  await audioPlayer.init();
+
+  const canvas = document.getElementById('viz-canvas') as HTMLCanvasElement;
+  scene = new SceneManager(canvas);
+
+  setStatus('Connecting to Lyria...');
+
+  await lyria.connect({
+    onAudioChunk: (pcm) => audioPlayer.pushAudio(pcm),
+    onFilteredPrompt: (text, reason) => {
+      console.warn(`Prompt filtered: "${text}" — ${reason}`);
+    },
+    onWarning: (msg) => console.warn('Lyria warning:', msg),
+    onError: (err) => {
+      console.error('Lyria error:', err);
+      setStatus('Connection error — refresh to retry');
+    },
+    onClose: () => {
+      setStatus('Disconnected');
+      playing = false;
+    },
+    onReady: () => {
+      setStatus('Ready');
+      // Set initial targets and immediately send
+      paramEngine.setTargets(sliderState, lorenz.getState());
+      for (let i = 0; i < 100; i++) paramEngine.tick(); // snap to initial
+      sendSmoothedParams();
+      lyria.play();
+      playing = true;
+      setStatus('Playing');
+    },
+  });
+}
+
+// ── Send smoothed params to Lyria ──
+function sendSmoothedParams(): void {
+  const params = paramEngine.getSmoothedParams();
+  lyria.setPrompts(params.prompts);
+
+  const config: MusicGenConfig = { ...params.config };
+  if (bpm !== null) (config as any).bpm = bpm;
+  lyria.setConfig(config);
+}
+
+// ── Animation loop ──
+let lastTime = performance.now();
+
+function animate(): void {
+  requestAnimationFrame(animate);
+
+  const now = performance.now();
+  const dt = (now - lastTime) / 1000;
+  lastTime = now;
+
+  // Advance Lorenz attractor
+  lorenz.step();
+  const lorenzState = lorenz.getState();
+
+  // Update targets (cheap — just sets target values)
+  paramEngine.setTargets(sliderState, lorenzState);
+
+  // Advance smoothers (every frame — this is what makes transitions gradual)
+  paramEngine.tick();
+
+  // Send smoothed params to Lyria at rate-limited interval
+  if (playing && paramEngine.shouldSend()) {
+    sendSmoothedParams();
   }
 
-  syncHud();
-  syncSliders();
+  // Audio analysis for visualization
+  const audio: AudioAnalysis = audioPlayer.getAnalysis();
+
+  // Update Three.js scene
+  if (scene) {
+    scene.update(sliderState, lorenzState, audio, dt);
+  }
 }
 
-function loopTheme() {
-  updateSurfaceTheme();
-  requestAnimationFrame(loopTheme);
-}
+// ── Controls ──
+const { getSliderState } = initControls({
+  onSliderChange: (state) => {
+    sliderState = state;
+  },
+  onBpmChange: (newBpm) => {
+    bpm = newBpm;
+    if (playing) {
+      sendSmoothedParams();
+      lyria.resetContext();
+      audioPlayer.resetBuffer();
+      setStatus('Resetting for new BPM...');
+      setTimeout(() => setStatus('Playing'), 2000);
+    }
+  },
+  onVolumeChange: (vol) => audioPlayer.setVolume(vol),
+  onLorenzSpeedChange: (speed) => lorenz.setSpeed(speed),
+  onPlay: () => {
+    if (!playing) {
+      lyria.play();
+      audioPlayer.resume();
+      playing = true;
+      setStatus('Playing');
+    }
+  },
+  onPause: () => {
+    if (playing) {
+      lyria.pause();
+      playing = false;
+      setStatus('Paused');
+    }
+  },
+});
 
-bindMacros();
-bindSliders();
-bindLayers();
-bindKeyboard();
-bindEngineEvents();
-syncHud();
-updateSurfaceTheme();
-loopTheme();
-
-document.getElementById('start-btn')!.addEventListener('click', startApp);
+// ── Init ──
+document.getElementById('start-btn')!.addEventListener('click', async () => {
+  await start();
+  animate();
+});

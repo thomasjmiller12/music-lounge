@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Lounge — Sound Lab</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #0c0c16;
+      color: rgba(255, 255, 255, 0.9);
+      padding: 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 300;
+      letter-spacing: 0.3em;
+      margin-bottom: 8px;
+    }
+
+    .intro {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    .status {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      padding: 6px 16px;
+      background: rgba(20, 20, 30, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .stop-all {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      padding: 8px 20px;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      border: 1px solid rgba(255, 100, 100, 0.3);
+      background: rgba(255, 50, 50, 0.1);
+      color: rgba(255, 150, 150, 0.9);
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    .stop-all:hover { background: rgba(255, 50, 50, 0.2); }
+
+    .schema-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .schema-card.active {
+      border-color: rgba(160, 200, 255, 0.3);
+      background: rgba(160, 200, 255, 0.04);
+    }
+
+    .schema-name {
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+
+    .schema-desc {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.45);
+      margin-bottom: 14px;
+    }
+
+    .schema-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .play-btn {
+      padding: 8px 16px;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+      color: rgba(255, 255, 255, 0.7);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .play-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .play-btn.playing {
+      background: rgba(160, 200, 255, 0.15);
+      border-color: rgba(160, 200, 255, 0.4);
+      color: rgba(200, 220, 255, 1);
+    }
+
+    .schema-details {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.65rem;
+      color: rgba(255, 255, 255, 0.35);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      white-space: pre-wrap;
+      display: none;
+    }
+    .schema-card.active .schema-details {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>SOUND LAB</h1>
+  <p class="intro">
+    Audition 10 parameter schemas to find the right vibe. Each has 4 positions:
+    calm-day (minimal/bright), calm-night (minimal/dark), drive-day (energetic/bright),
+    and center (balanced). Click any button to hear that combination.
+    The current prompts and config are shown below each active schema.
+  </p>
+
+  <div class="status" id="status">Not connected</div>
+  <button class="stop-all" id="stop-all">STOP</button>
+
+  <div id="schemas"></div>
+
+  <script type="module" src="/src/demo.ts"></script>
+</body>
+</html>
